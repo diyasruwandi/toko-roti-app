@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../controllers/auth_controller.dart';
+import '../controllers/cart_controller.dart';
+import '../controllers/favorite_controller.dart';
+import '../controllers/product_controller.dart';
+import '../models/product_model.dart';
+import '../routes/app_pages.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -9,38 +16,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController searchController = TextEditingController();
   int selectedCategoryIndex = 0;
   int selectedNavIndex = 0;
+  final ProductController productController = Get.put(ProductController());
+  final FavoriteController favoriteController = Get.put(FavoriteController());
+  final AuthController authController = Get.find<AuthController>();
 
-  final List<String> categories = ['Semua', 'Roti', 'Kue', 'Donat', 'Promo'];
-
-  // Data dummy - nanti diganti hasil fetch dari API (GET /api/products)
-  final List<Map<String, dynamic>> products = [
-    {
-      'name': 'Butter Croissant',
-      'price': 25000,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuAgQikvxnAaysAHn2pMmjlz46JU0tiMJo7G_D9oQFUVDq_EjRrqv8UvxEt7KRPRhpTJwnzuzkl7cJezdw_3VLTzI00tGFziN44dwkxKyDEg3TIH6R8Gw0MWTKX-2iEWJft33V8jJb32AXMK8F31vcfOIBcWoy720OCLomtpA6WlPEslNWYrVdzHAVlx5-2MsFrTiqyhan2qDhdZurC004fiAf8U_z5K0kpLHPlGF3laErtLKnkL8T8b7yNiuNJVYv2mbFW2hkVQN2Ii',
-    },
-    {
-      'name': 'Classic Brioche',
-      'price': 35000,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuDt2-eyHUwqOtvtG3Bp81rh-zPceIzJEwocmv_Qp2qCVmSGckQqD4lmY72J5eGVq_kSVUq0BCEGxP4vW7DVj7SDc_xtODOoBg6IDJk8f67YbyGn4c-L9cYjGQ9LyV_RdcphY_UiegNCZMktcxTdV76U7vqppG1GapdToXgA8JkrQa0IC9tiMPbd1ysmPY7Uuu44PAxxKnJyNolqLg0sS5Iy5YJSc8jaovqNZpkf9L8IezyoAikKJVIBY0s5GA8f6Z_tw35tRvujp6DJ',
-    },
-    {
-      'name': 'Pain au Chocolat',
-      'price': 28000,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuBoBRACIDPnGanKx-u1e8IZ1A0p0W8tleZPXMKUeiNOBYgzQ_vlEttNIEu2N3WEy3FNQKAqm7QMLi_bLFQjqkye5rLCvA4isX_bVbwYfNOKLPD8XMcH1-wJKNHWrlVeR5m7pbY4bp1-dXAqvtGoqNZJY2KT6Hv7nzUVVD2wdWtFOCIfZ_ErjATzl98dxq2QCMJ9xijT04iAYlcvu8bBRLX1uthtT6G2ndetclD89ZF8-Bsg28hqjg71qY8itMWWlIz_0GhDBOXv57Rk',
-    },
-    {
-      'name': 'Cinnamon Roll',
-      'price': 22000,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuA5PHrAgxGM-QhiYtVWwJ9iEjNXhxNFdQMTJH-7b8-miyUYSTokK6hwl0I3u7LWOD45dL-gNk7VLcQmA3W4EgkhEbDhbbEpNmJ36Bp5QMeuu58XktZWcpCtWNUKDGUEJNfCX77ca1P6_99DAx4OgZUhg-cIh227iJrM_fvea7dj9GVTLW7F_sG5aPGn-VpZOsloXIuY-nGWiHiQ5doNFZUnP9qSpjhhce3nbU5SZnESlYqzhsU_wdMCgcocBxZtdUsJYNMtUt4VmA_g',
-    },
-  ];
+  final List<String> categories = ['Semua', 'Croissant', 'Pastry', 'Donat'];
 
   // Palet warna dari config Stitch
   static const Color primary = Color(0xFF003229);
@@ -49,21 +32,34 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color background = Color(0xFFFFF8F5);
   static const Color secondaryContainer = Color(0xFFE7E2DA);
   static const Color onSecondaryContainer = Color(0xFF67645E);
-  static const Color surfaceContainerHigh = Color(0xFFEFE6E2);
+  static const Color outline = Color(0xFF707975);
 
-  String formatRupiah(int price) {
-    return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
-  void onAddToCart(Map<String, dynamic> product) {
-    // TODO: cek login dulu, kalau belum login arahkan ke Login
-    // TODO: kalau sudah login, panggil Get.find<CartController>().addItem(product)
-    Get.snackbar(
-      'Ditambahkan',
-      '${product['name']} masuk ke keranjang',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 1),
-    );
+  String formatRupiah(num price) {
+    return 'Rp ${price.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  }
+
+  void onAddToCart(ProductModel product) {
+    if (!authController.isLoggedIn) {
+      Get.snackbar(
+        'Perhatian',
+        'Silakan login terlebih dahulu untuk menambahkan produk ke keranjang',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.amber,
+        colorText: Colors.black,
+        duration: const Duration(seconds: 2),
+      );
+      Get.toNamed(Routes.login);
+      return;
+    }
+
+    final cartController = Get.find<CartController>();
+    cartController.addProduct(product);
   }
 
   @override
@@ -88,10 +84,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(
-                              Icons.bakery_dining,
-                              color: primary,
-                              size: 28,
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                'assets/images/logoroti22.png',
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                  Icons.bakery_dining,
+                                  color: primary,
+                                  size: 28,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Column(
@@ -101,40 +107,67 @@ class _HomeScreenState extends State<HomeScreen> {
                                   'Halo,',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: onSurfaceVariant.withValues(alpha: 0.7),
+                                    color: onSurfaceVariant.withValues(
+                                      alpha: 0.7,
+                                    ),
                                   ),
                                 ),
-                                const Text(
-                                  'Aditya Wijaya', // TODO: ganti dari data user login
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: primary,
+                                Obx(
+                                  () => Text(
+                                    authController.currentUser.value?.name ??
+                                        'Pengguna',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: primary,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: surfaceContainerHigh,
-                              width: 2,
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: Image.network(
-                              'https://lh3.googleusercontent.com/aida-public/AB6AXuBkevNnoe9nvV2y-dpbPST6NRw0_6Xro28AYK-_ws3qdPlcEdY-ssY0J_1o0cCH3FM3ELHeD6dJcAQt_Br6X2tXPp4O_E9Rxy7P6RnipfpNezC1-_OL78kTHB_0gzpW1PDlhq2MWE3-e8-ycrUz07kF4DVB9Czh303n9lwgx6chSBzJgClRfzrCxAJDej_60VI29z20mTdl12VuttfX8nBqQgF84V783r5dfmi2Zo39enpw8sMz5Oer_0-wC6YITiBl9wUggEKU-TOx',
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) =>
-                                  const Icon(Icons.person, color: primary),
-                            ),
-                          ),
-                        ),
+                        Obx(() {
+                          final favCount = favoriteController.favoriteProducts.length;
+                          return Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.favorite,
+                                  color: Colors.redAccent,
+                                  size: 26,
+                                ),
+                                tooltip: 'Produk Favorit (SQLite)',
+                                onPressed: () => Get.toNamed(Routes.favorites),
+                              ),
+                              if (favCount > 0)
+                                Positioned(
+                                  right: 4,
+                                  top: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 16,
+                                    ),
+                                    child: Text(
+                                      '$favCount',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -145,6 +178,54 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
+                      // Search Bar
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Cari roti favoritmu...',
+                            hintStyle: TextStyle(
+                              color: outline.withValues(alpha: 0.6),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: outline,
+                            ),
+                            suffixIcon: searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: outline,
+                                    ),
+                                    onPressed: () {
+                                      searchController.clear();
+                                      setState(() {});
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            setState(() {});
+                          },
+                        ),
+                      ),
+
                       // Hero Banner
                       Container(
                         height: 180,
@@ -275,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           TextButton(
                             onPressed: () {
-                              // Get.toNamed('/products');
+                              Get.toNamed(Routes.productList);
                             },
                             child: Row(
                               children: [
@@ -296,189 +377,236 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 12),
 
                       // Product grid
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: products.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 16,
-                              crossAxisSpacing: 16,
-                              childAspectRatio: 0.72,
+                      Obx(() {
+                        if (productController.isLoading.value) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 32),
+                            child: Center(
+                              child: CircularProgressIndicator(color: primary),
                             ),
-                        itemBuilder: (context, index) {
-                          final product = products[index];
-                          return GestureDetector(
-                            onTap: () {
-                              // Get.toNamed('/product-detail', arguments: product);
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: primaryContainer.withValues(alpha: 0.06),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(16),
-                                    ),
-                                    child: Image.network(
-                                      product['image'],
-                                      height: 110,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (c, e, s) => Container(
-                                        height: 110,
-                                        color: secondaryContainer,
-                                        child: const Icon(
-                                          Icons.bakery_dining,
-                                          color: primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          product['name'],
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              formatRupiah(product['price']),
-                                              style: const TextStyle(
-                                                color: primary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () => onAddToCart(product),
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  6,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: primary,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.shopping_cart,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                          );
+                        }
+
+                        if (productController.errorMessage.isNotEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text(
+                                productController.errorMessage.value,
+                                style: const TextStyle(color: Colors.red),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           );
-                        },
-                      ),
+                        }
+
+                        final selectedCat = categories[selectedCategoryIndex];
+                        final searchQuery = searchController.text
+                            .trim()
+                            .toLowerCase();
+
+                        final filteredProducts = productController.products
+                            .where((p) {
+                              final catMatch =
+                                  selectedCat == 'Semua' ||
+                                  p.name.toLowerCase().contains(
+                                    selectedCat.toLowerCase(),
+                                  ) ||
+                                  (p.description ?? '').toLowerCase().contains(
+                                    selectedCat.toLowerCase(),
+                                  );
+
+                              final searchMatch =
+                                  searchQuery.isEmpty ||
+                                  p.name.toLowerCase().contains(searchQuery) ||
+                                  (p.description ?? '').toLowerCase().contains(
+                                    searchQuery,
+                                  );
+
+                              return catMatch && searchMatch;
+                            })
+                            .toList();
+
+                        if (filteredProducts.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Center(
+                              child: Text(
+                                searchQuery.isNotEmpty
+                                    ? 'Tidak ada produk cocok dengan "$searchQuery"'
+                                    : 'Tidak ada produk untuk kategori "$selectedCat".',
+                                style: const TextStyle(color: onSurfaceVariant),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filteredProducts.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 16,
+                                crossAxisSpacing: 16,
+                                childAspectRatio: 0.85,
+                              ),
+                          itemBuilder: (context, index) {
+                            final product = filteredProducts[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Get.toNamed(
+                                  Routes.productDetail,
+                                  arguments: product,
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryContainer.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: const BorderRadius.vertical(
+                                            top: Radius.circular(16),
+                                          ),
+                                          child:
+                                              product.image != null &&
+                                                  product.image!.isNotEmpty
+                                              ? Image.network(
+                                                  product.image!,
+                                                  height: 110,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (c, e, s) =>
+                                                      Container(
+                                                        height: 110,
+                                                        color: secondaryContainer,
+                                                        child: const Icon(
+                                                          Icons.bakery_dining,
+                                                          color: primary,
+                                                        ),
+                                                      ),
+                                                )
+                                              : Container(
+                                                  height: 110,
+                                                  color: secondaryContainer,
+                                                  width: double.infinity,
+                                                  child: const Icon(
+                                                    Icons.bakery_dining,
+                                                    color: primary,
+                                                  ),
+                                                ),
+                                        ),
+                                        Positioned(
+                                          top: 4,
+                                          right: 4,
+                                          child: Obx(() {
+                                            final isFav = favoriteController.isFavorite(product.id);
+                                            return GestureDetector(
+                                              onTap: () => favoriteController.toggleFavorite(product),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withValues(alpha: 0.85),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  isFav ? Icons.favorite : Icons.favorite_border,
+                                                  color: isFav ? Colors.red : primary,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            );
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            product.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                formatRupiah(product.price),
+                                                style: const TextStyle(
+                                                  color: primary,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              GestureDetector(
+                                                onTap: () =>
+                                                    onAddToCart(product),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: primary,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.shopping_cart,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }),
 
                       const SizedBox(height: 24),
-
-                      // Promo banner
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Langganan Mingguan?',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: primary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Dapatkan roti segar setiap pagi dengan diskon 15%.',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Pelajari Lebih Lanjut',
-                                    style: TextStyle(
-                                      color: primary,
-                                      fontWeight: FontWeight.bold,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.loyalty, color: primary),
-                            ),
-                          ],
-                        ),
-                      ),
-
                       const SizedBox(height: 100), // ruang buat bottom nav
                     ]),
                   ),
                 ),
               ],
-            ),
-
-            // FAB - search
-            Positioned(
-              bottom: 96,
-              right: 20,
-              child: FloatingActionButton(
-                backgroundColor: primary,
-                onPressed: () {
-                  // TODO: navigasi ke search / product list
-                },
-                child: const Icon(Icons.search, color: Colors.white),
-              ),
             ),
           ],
         ),
@@ -518,14 +646,38 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSelected = selectedNavIndex == index;
     return GestureDetector(
       onTap: () {
-        setState(() => selectedNavIndex = index);
-        // TODO: navigasi sesuai index
-        // 0: Home, 1: Product List, 2: Cart, 3: Profile
+        switch (index) {
+          case 0:
+            break; // sudah di Home
+          case 1:
+            Get.toNamed(Routes.productList);
+            break;
+          case 2:
+            if (!authController.isLoggedIn) {
+              Get.snackbar(
+                'Perhatian',
+                'Silakan login terlebih dahulu untuk mengakses keranjang',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.amber,
+                colorText: Colors.black,
+                duration: const Duration(seconds: 2),
+              );
+              Get.toNamed(Routes.login);
+            } else {
+              Get.toNamed(Routes.cart);
+            }
+            break;
+          case 3:
+            Get.toNamed(Routes.profile);
+            break;
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? primary.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected
+              ? primary.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(

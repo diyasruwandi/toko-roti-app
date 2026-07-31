@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
+import 'package:toko_roti_app/controllers/auth_controller.dart';
+import 'package:toko_roti_app/controllers/cart_controller.dart';
+import 'package:toko_roti_app/routes/app_pages.dart';
+import 'package:get/get.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,10 +35,25 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void handleLogin() {
-    // Nanti sambungkan ke AuthController:
-    // Get.find<AuthController>().login(emailController.text, passwordController.text);
+  Future<void> handleLogin() async {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      Get.snackbar('Perhatian', 'Email dan password wajib diisi');
+      return;
+    }
+
     setState(() => isLoading = true);
+
+    final authController = Get.find<AuthController>();
+    final success = await authController.login(
+      email: emailController.text.trim(),
+      password: passwordController.text,
+    );
+
+    setState(() => isLoading = false);
+
+    if (success) {
+      Get.offAllNamed(Routes.home);
+    }
   }
 
   @override
@@ -120,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Email field
                           _buildLabel('Email'),
@@ -138,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               _buildLabel('Kata Sandi'),
                               GestureDetector(
                                 onTap: () {
-                                  // navigasi ke forgot password kalau ada
+                                  Get.toNamed(Routes.forgotPassword);
                                 },
                                 child: Text(
                                   'Lupa?',
@@ -237,12 +256,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 20),
 
-                          // Google login button
+                          // Guest login button
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                // integrasi Google login kalau nanti diperlukan
+                                if (Get.isRegistered<CartController>()) {
+                                  Get.find<CartController>().clearAll();
+                                }
+                                Get.offAllNamed(Routes.home);
                               },
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: outlineVariant),
@@ -253,9 +275,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
-                              icon: const Icon(Icons.g_mobiledata, size: 24),
+                              icon: const Icon(
+                                Icons.person_outline,
+                                size: 22,
+                                color: primary,
+                              ),
                               label: Text(
-                                'Lanjutkan dengan Google',
+                                'Masuk sebagai Tamu',
                                 style: TextStyle(
                                   color: onSurface,
                                   fontWeight: FontWeight.w500,
@@ -279,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            // Nanti: Get.toNamed('/register');
+                            Get.toNamed(Routes.register);
                           },
                           child: Text(
                             'Daftar',

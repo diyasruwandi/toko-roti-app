@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:get/get.dart';
+import 'package:toko_roti_app/controllers/auth_controller.dart';
+import '../routes/app_pages.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,7 +30,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Simulasi pindah ke halaman berikutnya setelah 3.5 detik
     Timer(const Duration(milliseconds: 3500), () {
-      // nanti diganti Get.offAll(() => LoginScreen());
+      final authController = Get.find<AuthController>();
+      if (authController.isLoggedIn) {
+        Get.offAllNamed(Routes.home);
+      } else {
+        Get.offAllNamed(Routes.login);
+      }
     });
   }
 
@@ -45,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen>
         children: [
           // Decorative floating icons (opsional, bisa dihapus kalau ribet)
           Positioned(
-            top: 80,  
+            top: 80,
             left: 40,
             child: Icon(
               Icons.bakery_dining,
@@ -84,18 +92,11 @@ class _SplashScreenState extends State<SplashScreen>
                   margin: const EdgeInsets.only(bottom: 32),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
-                    child: Image.network(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuD4Vbv8bDOFTZu72jbf938W6GR9jZPFFFGAT2d4m8d9Uwj7FBy3wNrX7Yq6eGPtiqUwojaPBb3ycEd_8P5iZgSM82Qjqcv0L2LFrYs6-PEFTLkPZWIBh_znQiJiDngrK68qmAgNdgOTZFI3tFADkZ_KbB5bFLTwBq0-KPullvjwRzqdZsAxwpmvAXCSarkWk9kufSAkk-bRb87CFK6Lm2_8tC5Bcetg4kmr7A_L8XMWQvPVTQ3-40ZbWKi-1ymle4M9NE7R0acRSXFu',
+                    child: Image.asset(
+                      'assets/images/logoroti22.png',
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => const Icon(
                         Icons.bakery_dining,
@@ -147,7 +148,9 @@ class _SplashScreenState extends State<SplashScreen>
                         borderRadius: BorderRadius.circular(10),
                         child: Stack(
                           children: [
-                            Container(color: Colors.white.withValues(alpha: 0.1)),
+                            Container(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
                             Align(
                               alignment: Alignment(
                                 -1 + (_controller.value * 2.8), // efek geser

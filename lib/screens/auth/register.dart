@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:toko_roti_app/controllers/auth_controller.dart';
+
+import '../../routes/app_pages.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -27,7 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const Color onSurfaceVariant = Color(0xFF404945);
   static const Color surfaceContainerLow = Color(0xFFFBF2ED);
   static const Color background = Color(0xFFF5F0E8);
-  static const Color outlineVariant = Color(0xFFBFC9C4);
+  // static const Color outlineVariant = Color(0xFFBFC9C4);
 
   @override
   void dispose() {
@@ -39,31 +42,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void handleRegister() {
+  void handleRegister() async {
     if (!agreedToTerms) {
       Get.snackbar(
         'Perhatian',
         'Kamu harus menyetujui Syarat & Ketentuan terlebih dahulu',
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
     if (passwordController.text != confirmPasswordController.text) {
-      Get.snackbar(
-        'Perhatian',
-        'Konfirmasi kata sandi tidak cocok',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar('Perhatian', 'Konfirmasi kata sandi tidak cocok');
       return;
     }
-    // Nanti sambungkan ke AuthController:
-    // Get.find<AuthController>().register(
-    //   name: nameController.text,
-    //   email: emailController.text,
-    //   phone: phoneController.text,
-    //   password: passwordController.text,
-    // );
+
     setState(() => isLoading = true);
+
+    final authController = Get.find<AuthController>();
+    final success = await authController.register(
+      name: nameController.text.trim(),
+      email: emailController.text.trim(),
+      phone: phoneController.text.trim(),
+      password: passwordController.text,
+    );
+
+    setState(() => isLoading = false);
+
+    if (success) {
+      Get.offAllNamed(Routes.login);
+    }
   }
 
   @override
@@ -115,8 +121,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: Image.network(
-                            'https://lh3.googleusercontent.com/aida-public/AB6AXuD4Vbv8bDOFTZu72jbf938W6GR9jZPFFFGAT2d4m8d9Uwj7FBy3wNrX7Yq6eGPtiqUwojaPBb3ycEd_8P5iZgSM82Qjqcv0L2LFrYs6-PEFTLkPZWIBh_znQiJiDngrK68qmAgNdgOTZFI3tFADkZ_KbB5bFLTwBq0-KPullvjwRzqdZsAxwpmvAXCSarkWk9kufSAkk-bRb87CFK6Lm2_8tC5Bcetg4kmr7A_L8XMWQvPVTQ3-40ZbWKi-1ymle4M9NE7R0acRSXFu',
+                          child: Image.asset(
+                            'assets/images/logoroti22.png',
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) =>
                                 const Icon(
@@ -162,6 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildLabel('Nama Lengkap'),
                         const SizedBox(height: 8),

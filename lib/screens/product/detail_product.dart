@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../controllers/auth_controller.dart';
+import '../../controllers/cart_controller.dart';
+import '../../controllers/favorite_controller.dart';
+import '../../models/product_model.dart';
+import '../../routes/app_pages.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key});
@@ -10,19 +15,60 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int quantity = 1;
-  final int stock = 8;
 
-  // Data dummy - nanti diganti data asli dari argument navigasi / API
-  final Map<String, dynamic> product = {
-    'name': 'Authentic 24-Hour Fermented Sourdough',
-    'price': 65000,
-    'rating': 4.9,
-    'reviewCount': 120,
-    'image':
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuA5GPLCSrOdC4fL7Ajv5ftLyAkZXXVTM1OCH1G8rddoqn7HS8xbl1kZFY7h_z2VrbS90d0A7Zt8gp8Gd6kbj-88kzUcax2272uIxzCyiLNmdJMduUTVWt0OFmydbJgJiZH--dJqlj4PhWKLlTYcr9_ht65xaPnrQzKyYPvhrCZy7yZe7KviYgjMw14VxXIXCsSiUWjlDll-rFJuQlUji0EpQoKyYp8Y5nzcyyLhlO9XgKIZmQ9hMrfSkGN_mfnIAWgevrTxL9--QLXn',
-    'description':
-        "Rasakan kemewahan tekstur roti sourdough kami yang difermentasi selama 24 jam penuh secara natural. Dibuat menggunakan teknik artisanal tradisional dengan 'starter' yang telah dipelihara selama 5 tahun, menghasilkan kerak yang renyah (crusty) dan bagian dalam yang sangat lembut (airy) dengan aroma asam yang seimbang.",
-  };
+  late Map<String, dynamic> product;
+  late int stock;
+  late ProductModel currentProductModel;
+  final FavoriteController favoriteController = Get.put(FavoriteController());
+
+  @override
+  void initState() {
+    super.initState();
+    final args = Get.arguments;
+    if (args is ProductModel) {
+      currentProductModel = args;
+      product = {
+        'id': args.id,
+        'name': args.name,
+        'price': args.price.toInt(),
+        'rating': 4.9,
+        'reviewCount': 120,
+        'image': args.image ?? '',
+        'description':
+            args.description ?? 'Roti berkualitas dari bahan pilihan terbaik.',
+      };
+      stock = args.stock > 0 ? args.stock : 10;
+    } else if (args is Map<String, dynamic>) {
+      product = args;
+      stock = args['stock'] ?? 8;
+      currentProductModel = ProductModel(
+        id: args['id'] is int ? args['id'] : int.tryParse(args['id'].toString()) ?? 1,
+        name: args['name']?.toString() ?? '',
+        description: args['description']?.toString(),
+        price: double.tryParse(args['price']?.toString() ?? '0') ?? 0.0,
+        image: args['image']?.toString(),
+        stock: stock,
+      );
+    } else {
+      product = {
+        'id': 1,
+        'name': 'Roti Pilihan',
+        'price': 25000,
+        'rating': 4.8,
+        'reviewCount': 50,
+        'image': '',
+        'description': 'Roti lezat buatan sendiri dengan kehangatan khas oven.',
+      };
+      stock = 8;
+      currentProductModel = ProductModel(
+        id: 1,
+        name: 'Roti Pilihan',
+        price: 25000,
+        stock: 8,
+        description: 'Roti lezat buatan sendiri dengan kehangatan khas oven.',
+      );
+    }
+  }
 
   final List<Map<String, dynamic>> complements = [
     {
@@ -41,17 +87,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // Palet warna
   static const Color primary = Color(0xFF003229);
-  static const Color primaryContainer = Color(0xFF0C4A3E);
   static const Color onSurfaceVariant = Color(0xFF404945);
   static const Color background = Color(0xFFF5F0E8);
   static const Color surfaceContainerHigh = Color(0xFFEFE6E2);
   static const Color tertiaryContainer = Color(0xFFE6C09A);
 
-  String formatRupiah(int price) {
-    return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  String formatRupiah(num price) {
+    return 'Rp ${price.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
-  int get totalPrice => quantity * (product['price'] as int);
+  num get totalPrice => quantity * (product['price'] as num);
 
   void increaseQty() {
     if (quantity < stock) {
@@ -66,13 +111,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void addToCart() {
-    // TODO: cek login dulu, kalau belum login arahkan ke Login
-    // TODO: Get.find<CartController>().addItem(product, quantity);
-    Get.snackbar(
-      'Ditambahkan',
-      '$quantity x ${product['name']} masuk ke keranjang',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    final authController = Get.find<AuthController>();
+    if (!authController.isLoggedIn) {
+      Get.snackbar(
+        'Perhatian',
+        'Silakan login terlebih dahulu untuk menambahkan produk ke keranjang',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.amber,
+        colorText: Colors.black,
+        duration: const Duration(seconds: 2),
+      );
+      Get.toNamed(Routes.login);
+      return;
+    }
+
+    final cartController = Get.find<CartController>();
+    ProductModel model;
+    final args = Get.arguments;
+    if (args is ProductModel) {
+      model = args;
+    } else {
+      model = ProductModel(
+        id: product['id'] is int ? product['id'] : 0,
+        name: product['name']?.toString() ?? 'Roti',
+        description: product['description']?.toString(),
+        price: (product['price'] as num).toDouble(),
+        image: product['image']?.toString(),
+        stock: stock,
+      );
+    }
+
+    cartController.addProduct(model, quantity: quantity);
   }
 
   @override
@@ -115,6 +184,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             color: primary,
                           ),
                         ),
+                        const Spacer(),
+                        Obx(() {
+                          final isFav = favoriteController.isFavorite(currentProductModel.id);
+                          return IconButton(
+                            icon: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: isFav ? Colors.red : primary,
+                              size: 24,
+                            ),
+                            onPressed: () => favoriteController.toggleFavorite(currentProductModel),
+                            tooltip: 'Favorit (SQLite)',
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -314,79 +396,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
 
                         const SizedBox(height: 24),
-
-                        // Complementary products
-                        const Text(
-                          'Pelengkap Sempurna',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: primary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: complements.map((item) {
-                            return Expanded(
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 12),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: primary.withValues(alpha: 0.05),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.03,
-                                      ),
-                                      blurRadius: 8,
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: AspectRatio(
-                                        aspectRatio: 1,
-                                        child: Image.network(
-                                          item['image'],
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (c, e, s) => Container(
-                                            color: surfaceContainerHigh,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      item['name'],
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: primary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      formatRupiah(item['price']),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
                       ],
                     ),
                   ),

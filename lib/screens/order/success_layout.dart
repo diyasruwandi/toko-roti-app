@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'dart:math';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+
+import '../../models/order_model.dart';
+import '../../routes/app_pages.dart';
+import '../../services/pdf_receipt_service.dart';
 
 class OrderSuccessScreen extends StatefulWidget {
   const OrderSuccessScreen({super.key});
@@ -13,11 +17,6 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-
-  // Data dummy - nanti diganti data order asli hasil response POST /api/orders
-  final String orderId = '#CC-82910';
-  final String estimatedTime = '25 - 35 Menit';
-  final int totalPayment = 128500;
 
   // Palet warna
   static const Color primary = Color(0xFF003229);
@@ -66,12 +65,22 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
     super.dispose();
   }
 
-  String formatRupiah(int price) {
-    return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  String formatRupiah(num price) {
+    return NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    ).format(price);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ambil data order asli yang dikirim dari checkout
+    final OrderModel? order = Get.arguments as OrderModel?;
+    final String displayOrderCode = order?.orderCode ?? '#CC-82910';
+    final double displayTotal = order?.totalPrice ?? 128500.0;
+    final String displayItems = order?.itemsSummary ?? 'Pesanan Roti';
+
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(
@@ -182,14 +191,21 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                         children: [
                           _buildSummaryItem(
                             label: 'ID PESANAN',
-                            value: orderId,
+                            value: displayOrderCode,
+                            withDivider: true,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSummaryItem(
+                            icon: Icons.bakery_dining,
+                            label: 'Daftar Item',
+                            value: displayItems,
                             withDivider: true,
                           ),
                           const SizedBox(height: 12),
                           _buildSummaryItem(
                             icon: Icons.schedule,
                             label: 'Estimasi Kedatangan',
-                            value: estimatedTime,
+                            value: '25 - 35 Menit',
                             withDivider: true,
                           ),
                           const SizedBox(height: 12),
@@ -204,10 +220,10 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                                 ),
                               ),
                               Text(
-                                formatRupiah(totalPayment),
+                                formatRupiah(displayTotal),
                                 style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                   color: primary,
                                 ),
                               ),
@@ -217,37 +233,70 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // Featured image
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 160,
-                        child: Image.network(
-                          'https://lh3.googleusercontent.com/aida-public/AB6AXuB1Bb446LZXpngnbUopun06LAfsyxlCDw859zc9QTUeF5IqXTfnVKoMqZS69ZGnvjZeXcT62TxMvQEtXFro0f6JH6fcNFUHxL3qU-Tluu-gQJ-zXc3veBF77gL2qlu9WtJAsafOc0a-3lStgevr97_XE-WrDFHZVNOQJXW7qP-yD6k7MuFs7DBkHhLMTYpYTxKCr5FILz8wdCnvvyPPhhaXV3uJ-zcd985PbOQlaAMtY7wa-TshbKCrRdfBi0q2tXFFy2vFDDkLFFYk',
-                          fit: BoxFit.cover,
-                          errorBuilder: (c, e, s) => Container(
-                            color: const Color(0xFFEFE6E2),
-                            child: const Icon(
-                              Icons.bakery_dining,
-                              size: 40,
-                              color: primary,
+                    // Opsi Cetak & Download PDF Struk jika order tersedia
+                    if (order != null) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                PdfReceiptService.instance.previewPdf(
+                                  context,
+                                  order,
+                                );
+                              },
+                              icon: const Icon(Icons.picture_as_pdf, size: 18),
+                              label: const Text('Lihat Struk'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: primary,
+                                side: const BorderSide(color: primary),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final file = await PdfReceiptService.instance
+                                    .downloadAndSavePdf(order);
+                                if (file != null) {
+                                  Get.snackbar(
+                                    'PDF Tersimpan',
+                                    'Struk PDF berhasil diunduh ke HP: ${file.path}',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    backgroundColor: primaryContainer,
+                                    colorText: Colors.white,
+                                    duration: const Duration(seconds: 4),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.download, size: 18),
+                              label: const Text('Download PDF'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryContainer,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 20),
+                    ],
 
                     // Action buttons
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          // Get.offNamed('/order-history');
+                          Get.offNamed(Routes.orderHistory);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primary,
@@ -272,7 +321,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          // Get.offAllNamed('/home');
+                          Get.offAllNamed(Routes.home);
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: primary,
@@ -333,11 +382,14 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                 ),
               ],
             ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: primary,
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: primary,
+                ),
               ),
             ),
           ],
