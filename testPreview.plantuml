@@ -1,0 +1,23 @@
+@startuml
+start
+:Buka Aplikasi Mobile Crust & Co.;
+:Lihat Katalog Produk Roti;
+:Tambah Roti ke Keranjang Belanja;
+:Simpan ke SQLite Lokal (cart_items);
+:Buka Layar Checkout;
+:Deteksi Lokasi GPS & Alamat Pengiriman;
+:Pilih Metode Pembayaran;
+
+if (Apakah Sudah Login Akun?) then (Ya)
+else (Tidak)
+  :Arahkan ke Halaman Login / Registrasi;
+  :Input Email & Password;
+endif
+
+:Kirim Request Order via REST API (POST /api/orders);
+:Simpan Transaksi ke Database Server (PostgreSQL/Supabase);
+:Cetak Struk Pembelian (.txt) ke External Storage HP;
+:Bersihkan Keranjang Belanja di SQLite Lokal;
+:Tampilkan Layar Pesanan Berhasil;
+stop
+@enduml

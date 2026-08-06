@@ -2,7 +2,8 @@ class ApiConfig {
   // Ganti sesuai environment kamu:
   // - Emulator Android: http://10.0.2.2:8000/api
   // - HP fisik (WiFi sama dengan laptop): http://[IP-LOKAL-LAPTOP]:8000/api
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static const String baseUrl = 'https://backend-toko-roti.vercel.app/api';
 
   static const String register = '$baseUrl/register';
   static const String login = '$baseUrl/login';

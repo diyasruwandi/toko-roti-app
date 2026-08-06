@@ -1,0 +1,43 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+skinparam usecase {
+    BackgroundColor #FFF8F5
+    BorderColor #003229
+}
+
+actor "Pelanggan (Mobile App)" as customer
+actor "Admin / Owner (Web)" as admin
+
+rectangle "Sistem Toko Roti Crust & Co." {
+  usecase "Registrasi & Login Akun" as UC1
+  usecase "Lupa / Reset Password" as UC2
+  usecase "Lihat Katalog & Detail Roti" as UC3
+  usecase "Simpan Roti Favorit (SQLite)" as UC4
+  usecase "Kelola Keranjang Belanja (SQLite)" as UC5
+  usecase "Checkout & Ambil Lokasi GPS" as UC6
+  usecase "Cetak Struk Pembelian (.txt External Storage)" as UC7
+  usecase "Lihat Riwayat Pesanan" as UC8
+
+  usecase "Login Portal Admin Web" as UC9
+  usecase "Lihat Dashboard Statistik & Omset" as UC10
+  usecase "Kelola Produk Roti (CRUD Produk)" as UC11
+  usecase "Kelola Status Pesanan Masuk" as UC12
+}
+
+customer --> UC1
+customer --> UC2
+customer --> UC3
+customer --> UC4
+customer --> UC5
+customer --> UC6
+customer --> UC7
+customer --> UC8
+
+admin --> UC9
+admin --> UC10
+admin --> UC11
+admin --> UC12
+
+@enduml
