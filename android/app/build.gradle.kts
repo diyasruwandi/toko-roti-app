@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -40,9 +42,17 @@ android {
 
     applicationVariants.all {
         val variant = this
-        variant.outputs.all {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "TokoRoti-App.apk"
+        if (variant.buildType.name == "release") {
+            variant.assembleProvider.configure {
+                doLast {
+                    val buildDir = layout.buildDirectory.get().asFile
+                    val originalApk = File(buildDir, "outputs/flutter-apk/app-release.apk")
+                    val renamedApk = File(buildDir, "outputs/flutter-apk/TokoRoti-App.apk")
+                    if (originalApk.exists()) {
+                        originalApk.copyTo(renamedApk, overwrite = true)
+                    }
+                }
+            }
         }
     }
 }
