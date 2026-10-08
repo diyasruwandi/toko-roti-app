@@ -31,7 +31,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'id': args.id,
         'name': args.name,
         'price': args.price.toInt(),
-        'rating': 4.9,
+        'rating': 4.8,
         'reviewCount': 120,
         'image': args.image ?? '',
         'description':
